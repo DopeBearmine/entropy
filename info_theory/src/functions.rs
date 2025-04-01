@@ -1,9 +1,6 @@
 use core::f64;
 use kernel_density_estimation::prelude::*;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
 
 pub fn entropy(data: &[f64], data_type: Option<&str>, bin_size: Option<f64>) -> f64 {
     // argument handling
@@ -27,9 +24,25 @@ pub fn entropy(data: &[f64], data_type: Option<&str>, bin_size: Option<f64>) -> 
             return entropy
         }
         "kde" => {
-            println!("Recieved Kernel Density Estimation (kde) entropy request");
+            let observations = data.to_vec();
+            let bandwidth = Scott;
+            let kernel = Epanechnikov;
+            let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
+            let pdf_max = (max(data) / 0.1 + 1.0).ceil() as i32;
+            let pdf_min = (min(data) / 0.1).floor() as i32;
+            let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
 
-            return 8.0
+            // Sample the distribution.
+            let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
+
+            let bin_size = bin_size.unwrap_or(3.49 as f64 * dev.unwrap() * length.powf(-1.0/3.0)); // Scott 1979
+            let bins = calc_bins(min(histvals.as_slice()), max(histvals.as_slice()), bin_size);
+            let mut counts: Vec<u64> = bin_counts(histvals.as_slice(), bins);
+            counts.retain(|&x| x !=0);
+            let sum: u64 = counts.iter().sum();
+            let probability: Vec<f64> = counts.iter_mut().map(|x| *x as f64/sum as f64).collect();
+            let entropy: f64 = -probability.iter().map(|&x| x * x.log2()).sum::<f64>();
+            return entropy
         }
         _ => {
             println!("Unknown data_type");
@@ -63,7 +76,7 @@ fn mean(data: &[f64]) -> Option<f64> {
     }
 }
 
-fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
+pub fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
     let array_len = ((max - min) / bin_size).ceil() as usize;  // Use usize for array length
     let mut bins = Vec::with_capacity(array_len);  // Create a Vec with capacity for `array_len`
 
@@ -90,12 +103,12 @@ fn bin_counts(data: &[f64], bins: Vec<f64>) -> Vec<u64> {
 }
 
 
-fn max(arr: &[f64]) -> f64 {
+pub fn max(arr: &[f64]) -> f64 {
     let result = arr.iter().copied().fold(f64::NAN, f64::max);
     return result
 }
 
-fn min(arr: &[f64]) -> f64 {
+pub fn min(arr: &[f64]) -> f64 {
     let result = arr.iter().copied().fold(f64::INFINITY, |a, b| a.min(b));
     return result
 }

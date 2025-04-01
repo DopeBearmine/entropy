@@ -1,0 +1,8 @@
+[package]
+name = "info_theory"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+kernel-density-estimation = "0.2.0"
+plotly = "0.12.1"
