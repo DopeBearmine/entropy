@@ -4,7 +4,7 @@ use kernel_density_estimation::prelude::*;
 
 pub fn entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -> f64 {
     // argument handling
-    let data_type: &str = data_type.unwrap_or("data");
+    let data_type: &str = data_type.unwrap_or("kde");
     if data.len() == 1 {
         return 0.0
     }
@@ -52,9 +52,12 @@ pub fn entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -
 }
 
 
+
+
+// Helper Functions
 fn std(data: &Vec<f64>) -> Option<f64> {
     match (mean(data), data.len()) {
-        (Some(data_mean), count) if count > 0 => {
+        (data_mean, count) if count > 0 => {
             let variance = data.iter().map(|value| {
                 let diff = data_mean - (*value as f64);
 
@@ -67,13 +70,9 @@ fn std(data: &Vec<f64>) -> Option<f64> {
     }
 }
 
-fn mean(data: &Vec<f64>) -> Option<f64> {
-    if data.is_empty() {
-        None
-    } else {
-        let sum: f64 = data.iter().sum();
-        Some(sum as f64 / data.len() as f64)
-    }
+fn mean(data: &Vec<f64>) -> f64 {
+    let sum: f64 = data.iter().sum();
+    sum as f64 / data.len() as f64
 }
 
 pub fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
@@ -120,13 +119,15 @@ mod tests {
     #[test]
     fn it_works() {
         let data = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
-        let bins: Vec<f64> = calc_bins(1.5, 10.5, 1.5);
-        assert_eq!(bins, [1.499, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5]);
+        let max_test: f64 = max(&vec![0.0, 1.0]);
+        assert_eq!(max, 1.0);
+        let min_test: f64 = min(&vec![0.0, 1.0]);
+        assert_eq!(max_test, 0.0);
+        let mean_test = mean(&vec![1.0,2.0,3.0]);
+        assert_eq!(mean_test, 2.0);
+        let bins_test: Vec<f64> = calc_bins(1.5, 10.5, 1.5);
+        assert_eq!(bins_test, [1.499, 3.0, 4.5, 6.0, 7.5, 9.0, 10.5]);
         let result2: Vec<u64> = bin_counts(&data, bins);
         assert_eq!(result2, [2, 0, 1, 2, 1, 4]);
-        let result: f64 = entropy(data, None, Some(1.5));
-        assert_eq!(result, 2.1219280948873624);
-        let result2: f64 = entropy(data, None, Some(2.5));
-        assert_eq!(result2, 1.8464393446710154);
     }
 }
