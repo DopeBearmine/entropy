@@ -4,15 +4,15 @@ use plotly::common::{Marker, Mode, AxisSide};
 use plotly::{Histogram, Plot, Scatter, layout::{Layout, Axis}};
 use crate::functions::{max, min};
 
-pub fn kde_plot(data: &[f64]) {
-    let observations = data.to_vec();
+pub fn kde_plot(data: Vec<f64>) {
+    let observations = data.clone();
     let bandwidth = Scott;
     let kernel = Epanechnikov;
     let x1 = observations.clone();
     let y1 = vec![0.0; data.len()];
     let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
-    let pdf_max = (max(data) / 0.1 + 1.0).ceil() as i32;
-    let pdf_min = (min(data) / 0.1).floor() as i32;
+    let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
+    let pdf_min = (min(&data) / 0.1).floor() as i32;
     let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
     let cdf_dataset = pdf_dataset.clone();
     let sample_dataset = cdf_dataset.clone();
