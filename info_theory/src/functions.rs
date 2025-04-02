@@ -14,6 +14,7 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     // Function Logic
     match data_type {
         "data" => {
+            // Direct calculation on the data using Scotts rule to determine bins
             let bin_size = bin_size.unwrap_or(3.49 as f64 * dev.unwrap() * length.powf(-1.0/3.0)); // Scott 1979
             let bins = calc_bins(min(&data), max(&data), bin_size);
             let mut counts: Vec<u64> = bin_counts(&data, bins);
@@ -24,6 +25,7 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
             return entropy
         }
         "kde" => {
+            // Kernel Density Estimation (kde)
             let observations = data.to_vec();
             let bandwidth = Scott;
             let kernel = Epanechnikov;
@@ -51,8 +53,24 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     }
 }
 
-pub fn mutual_information(data1: Vec<f64>, data2: Vec<f64>) -> f64 {
-    // assert_eq!(data1.len(), data2.len(), "data1 and data2 must have paired observations")
+pub fn mutual_information(x: Vec<f64>, y: Vec<f64>) -> f64 {
+    // Sanity check
+    if x.len() != y.len() {
+        panic!("x and y must be paired observations")
+    }
+    let x_bins = calc_bins(min(&x), max(&x), calc_bin_width_fd(&x));
+    let y_bins = calc_bins(min(&y), max(&y), calc_bin_width_fd(&y));
+    // Calculate marginal distributions
+    //  - probability of observing the data in x and y independent of each other
+    "foo";
+
+    // Calculate the joint distribution
+    //  - probability of observing data in y given x
+    //  - the same as observing data in x given y
+    "foo";
+
+    // Calculate Mutual Information
+
     return 0.0
 }
 
@@ -115,6 +133,26 @@ pub fn min(arr: &Vec<f64>) -> f64 {
     let result = arr.iter().copied().fold(f64::INFINITY, |a, b| a.min(b));
     return result
 }
+
+fn calc_bin_width_fd(data: &Vec<f64>) -> f64 {
+    // Calculate bin width using the Freedman-Diaconis rule
+    // Sort the data
+    let mut sorted = data.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // Helper function to find the percentile
+    let percentile = |p: f64| -> f64 {
+        let idx = (p * (sorted.len() as f64 - 1.0)).round() as usize;
+        sorted[idx]
+    };
+    // Compute Q1 and Q3
+    let q1 = percentile(0.25);
+    let q3 = percentile(0.75);
+    // Return the IQR
+    let iqr = q3 - q1;
+    let length = sorted.len() as f64;
+    (2.0 * iqr) / length.powf(1.0/3.0)
+}
+
 
 #[cfg(test)]
 mod tests {
