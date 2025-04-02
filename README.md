@@ -16,6 +16,6 @@ python
 >>> # entropy(data, data_type, bin_size)
 >>> #  - data: list of data points
 >>> #  - data_type: "data" (calculate directly) or "kde" (sample after calculating Kernel Density Estimation)
->>> #  - bin_size: float, width of bins to calculate probabilitys, defaults to Scotts rule
+>>> #  - bin_size: float, width of bins to calculate probabilities, defaults to Scotts rule
 >>> result = entropy(data, "kde", None)
 ```
