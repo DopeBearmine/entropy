@@ -3,7 +3,12 @@ name = "entropy"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "information_theory"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 info_theory = {path = "info_theory"}
 rand = "0.8"
 rand_distr = "0.4"
+pyo3 = {version = "0.24.1", features = ["extension-module"]}

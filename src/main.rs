@@ -5,9 +5,9 @@ use rand_distr::{Distribution, Normal};
 
 fn main() {
     let data = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
-    let result = entropy(data.clone(), Some("data"), Some(1.5));
+    let result = _entropy(data.clone(), Some("data"), Some(1.5));
     println!("Data-based Entropy: {}  |  Bin Size: 1.5", result);
-    let kde: f64 = entropy(data.clone(), Some("kde"), None);
+    let kde: f64 = _entropy(data.clone(), Some("kde"), None);
     println!("KDE-based Entropy: {}", kde);
 
     // Uniform Distribution Testing
@@ -17,7 +17,7 @@ fn main() {
     let uniform_vals: Vec<f64> = (0..size)
         .map(|_| rng.gen_range(range.clone())) // Generate f64 in range
         .collect();
-    println!("Uniform distrobution: {}", entropy(uniform_vals.clone(), Some("kde"), None));
+    println!("Uniform distrobution: {}", _entropy(uniform_vals.clone(), Some("kde"), None));
     kde_plot(uniform_vals);
 
     // Normal Distribution Testing
@@ -27,6 +27,6 @@ fn main() {
     let normal_vals: Vec<f64> = (0..size) // Generate 10 samples
         .map(|_| normal.sample(&mut rng))
         .collect();
-    println!("Normal distrobution: {}", entropy(normal_vals.clone(), Some("kde"), None));
+    println!("Normal distrobution: {}", _entropy(normal_vals.clone(), Some("kde"), None));
     kde_plot(normal_vals);
 }

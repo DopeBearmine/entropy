@@ -2,7 +2,7 @@ use core::f64;
 use kernel_density_estimation::prelude::*;
 
 
-pub fn entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -> f64 {
+pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -> f64 {
     // argument handling
     let data_type: &str = data_type.unwrap_or("kde");
     if data.len() == 1 {
@@ -51,6 +51,10 @@ pub fn entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -
     }
 }
 
+pub fn mutual_information(data1: Vec<f64>, data2: Vec<f64>) -> f64 {
+    // assert_eq!(data1.len(), data2.len(), "data1 and data2 must have paired observations")
+    return 0.0
+}
 
 
 
