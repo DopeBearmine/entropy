@@ -11,11 +11,11 @@ pip install muturin numpy
 ```
 python
 >>> from information_theory import entropy
-import numpy as np
-data = np.random.normal(0,1,10000)
-# entropy(data, data_type, bin_size)
-#  - data: list of data points
-#  - data_type: "data" (calculate directly) or "kde" (sample after calculating Kernel Density Estimation)
-#  - bin_size: float, width of bins to calculate probabilitys, defaults to Scotts rule
-result = entropy(data, "kde", None)
+>>> import numpy as np
+>>> data = np.random.normal(0,1,10000)
+>>> # entropy(data, data_type, bin_size)
+>>> #  - data: list of data points
+>>> #  - data_type: "data" (calculate directly) or "kde" (sample after calculating Kernel Density Estimation)
+>>> #  - bin_size: float, width of bins to calculate probabilitys, defaults to Scotts rule
+>>> result = entropy(data, "kde", None)
 ```
