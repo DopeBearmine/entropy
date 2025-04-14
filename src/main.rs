@@ -3,7 +3,23 @@ use info_theory::plots::*;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
+
+
 fn main() {
+    let x = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
+    let y = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
+    // let y = [1.8, 1.4, 2.5, 3.0, 1.2, 2.0, 2.5, 0.1, 1.9, 2.3].to_vec();
+    let result = _mutual_information(x.clone(),y.clone());
+    println!("{}", result);
+    let x_ent = _entropy(x.clone(), Some("data"), None);
+    let y_ent = _entropy(y.clone(), Some("data"), None);
+    println!("x-entropy: {}", x_ent);
+    println!("y-entropy: {}", y_ent);
+    println!("Bounded: {}", (2.0*result)/(x_ent+y_ent))
+
+}
+
+fn main_entropy() {
     let data = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
     let result = _entropy(data.clone(), Some("data"), Some(1.5));
     println!("Data-based Entropy: {}  |  Bin Size: 1.5", result);

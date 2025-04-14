@@ -1,5 +1,6 @@
 use core::f64;
 use kernel_density_estimation::prelude::*;
+use std::collections::HashMap;
 
 
 pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -> f64 {
@@ -15,9 +16,10 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     match data_type {
         "data" => {
             // Direct calculation on the data using Scotts rule to determine bins
-            let bin_size = bin_size.unwrap_or(3.49 as f64 * dev.unwrap() * length.powf(-1.0/3.0)); // Scott 1979
+            // let bin_size = bin_size.unwrap_or(3.49 as f64 * dev.unwrap() * length.powf(-1.0/3.0)); // Scott 1979
+            let bin_size = bin_size.unwrap_or(calc_bin_width_fd(&data));
             let bins = calc_bins(min(&data), max(&data), bin_size);
-            let mut counts: Vec<u64> = bin_counts(&data, bins);
+            let mut counts: Vec<u64> = bin_counts(&data, &bins);
             counts.retain(|&x| x !=0);
             let sum: u64 = counts.iter().sum();
             let probability: Vec<f64> = counts.iter_mut().map(|x| *x as f64/sum as f64).collect();
@@ -37,9 +39,10 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
             // Sample the distribution.
             let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
 
-            let bin_size = (pdf_max as f64 - pdf_min as f64) / 100.0;
+            // let bin_size = (pdf_max as f64 - pdf_min as f64) / 100.0;
+            let bin_size = calc_bin_width_fd(&histvals);
             let bins = calc_bins(min(&histvals), max(&histvals), bin_size);
-            let mut counts: Vec<u64> = bin_counts(&histvals, bins);
+            let mut counts: Vec<u64> = bin_counts(&histvals, &bins);
             counts.retain(|&x| x !=0);
             let sum: u64 = counts.iter().sum();
             let probability: Vec<f64> = counts.iter_mut().map(|x| *x as f64/sum as f64).collect();
@@ -53,25 +56,47 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     }
 }
 
-pub fn mutual_information(x: Vec<f64>, y: Vec<f64>) -> f64 {
+pub fn _mutual_information(x: Vec<f64>, y: Vec<f64>) -> f64 {
     // Sanity check
     if x.len() != y.len() {
         panic!("x and y must be paired observations")
     }
-    let x_bins = calc_bins(min(&x), max(&x), calc_bin_width_fd(&x));
-    let y_bins = calc_bins(min(&y), max(&y), calc_bin_width_fd(&y));
+    let x_bins: Vec<f64> = calc_bins(min(&x), max(&x), calc_bin_width_fd(&x));
+    let y_bins: Vec<f64> = calc_bins(min(&y), max(&y), calc_bin_width_fd(&y));
     // Calculate marginal distributions
     //  - probability of observing the data in x and y independent of each other
-    "foo";
+    let x_counts: Vec<u64> = bin_counts(&x, &x_bins);
+    let x_sum = x_counts.iter().sum::<u64>();
+    let marginal_x: Vec<f64> = x_counts.iter().map(|x| *x as f64 / x_sum as f64).collect();
 
+    let y_counts: Vec<u64> = bin_counts(&y, &y_bins);
+    let y_sum = y_counts.iter().sum::<u64>();
+    let marginal_y: Vec<f64> = y_counts.iter().map(|x| *x as f64 / y_sum as f64).collect();
+    
     // Calculate the joint distribution
     //  - probability of observing data in y given x
     //  - the same as observing data in x given y
-    "foo";
+    let in_bin_x: Vec<usize> = which_bin(&x, &x_bins);
+    let in_bin_y: Vec<usize> = which_bin(&y, &y_bins);
+    let joint = joint_pmf(in_bin_x, in_bin_y);
 
     // Calculate Mutual Information
-
-    return 0.0
+    let mut mutual_info: f64 = 0.0;
+    for (yi, vec) in joint.iter().enumerate() {
+        let denom: Vec<f64> = marginal_x.iter().map(|x| marginal_y[yi] as f64 * x).collect();
+        mutual_info += vec
+            .iter()
+            .zip(&denom)
+            .filter_map(|(&x, &y)| {
+                if x > 0.0 && y > 0.0 {
+                    Some(x * f64::log2(x / y))
+                } else {
+                    None
+                }
+            })
+            .sum::<f64>();
+    }
+    return mutual_info
 }
 
 
@@ -113,7 +138,7 @@ pub fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
     bins  // Return the Vec
 }
 
-fn bin_counts(data: &Vec<f64>, bins: Vec<f64>) -> Vec<u64> {
+fn bin_counts(data: &Vec<f64>, bins: &Vec<f64>) -> Vec<u64> {
     let mut counts: Vec<u64> = Vec::with_capacity(bins.len()-1);
     for i in 0..bins.len() - 1 {
         let mn = bins[i];
@@ -121,6 +146,41 @@ fn bin_counts(data: &Vec<f64>, bins: Vec<f64>) -> Vec<u64> {
         counts.push(data.iter().map(|&x| if x>mn && x<=mx {1} else {0}).sum())
     }
     counts
+}
+
+fn which_bin(data: &Vec<f64>, bins: &Vec<f64>) -> Vec<usize> {
+    // Takes in a data vector and bin edges
+    // returns a vector of the same size as data where the values are
+    // the indices of the bin that the data point falls into
+    data.iter().map(|&x| {
+        match bins.windows(2).position(|w| x >= w[0] && x < w[1]) {
+            Some(idx) => idx,
+            None => panic!("Data outside of provided bins")
+        }
+    }).collect()
+
+}
+
+fn joint_pmf(x: Vec<usize>,y: Vec<usize>) -> Vec<Vec<f64>>{
+    // x and y are vectors of bin indices 
+    //    eg. [0, 1, 1]
+    //      - 1st datapoint is in bin 0
+    //      - 2nd and 3rd data points are in bin 1
+    let mut joint_counts: HashMap<(usize, usize), usize> = HashMap::new();
+    for (&xi, &yi) in x.iter().zip(y.iter()) {
+        *joint_counts.entry((xi, yi)).or_insert(0) += 1;
+
+    }
+    let y_max = max(&y.iter().map(|&x| x as f64).collect()) as usize;
+    let x_max = max(&x.iter().map(|&x| x as f64).collect()) as usize;
+    let mut joint_pmf = vec![vec![0.0; y_max + 1]; x_max + 1];
+    let total = x.len() as f64;
+
+    for ((xi, yi), count) in joint_counts {
+        joint_pmf[xi][yi] = count as f64 / total;
+    }
+    joint_pmf
+
 }
 
 
