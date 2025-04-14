@@ -8,8 +8,8 @@ fn entropy (data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) -> P
 }
 
 #[pyfunction]
-fn mutual_information(x: Vec<f64>, y: Vec<f64>) -> PyResult<f64> {
-    Ok(_mutual_information(x, y))
+fn mutual_information(x: Vec<f64>, y: Vec<f64>, calc_type: Option<&str>) -> PyResult<f64> {
+    Ok(_mutual_information(x, y, calc_type))
 }
 
 #[pymodule]

@@ -28,16 +28,18 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
         }
         "kde" => {
             // Kernel Density Estimation (kde)
-            let observations = data.to_vec();
-            let bandwidth = Scott;
-            let kernel = Epanechnikov;
-            let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
-            let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
-            let pdf_min = (min(&data) / 0.1).floor() as i32;
-            let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
+            // let observations = data.clone();
+            // let bandwidth = Scott;
+            // let kernel = Epanechnikov;
+            // let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
+            // let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
+            // let pdf_min = (min(&data) / 0.1).floor() as i32;
+            // let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
 
-            // Sample the distribution.
-            let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
+            // // Sample the distribution.
+            // let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
+
+            let histvals = kde_sample(&data);
 
             // let bin_size = (pdf_max as f64 - pdf_min as f64) / 100.0;
             let bin_size = calc_bin_width_fd(&histvals);
@@ -56,11 +58,30 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     }
 }
 
-pub fn _mutual_information(x: Vec<f64>, y: Vec<f64>) -> f64 {
+pub fn _mutual_information(x_dat: Vec<f64>, y_dat: Vec<f64>, calc_type: Option<&str>) -> f64 {
     // Sanity check
-    if x.len() != y.len() {
+    if x_dat.len() != y_dat.len() {
         panic!("x and y must be paired observations")
     }
+    let calc_type: &str = calc_type.unwrap_or("data");
+    let (x, y) = match calc_type {
+        "data" => {
+            // Use the actual data
+            let x: Vec<f64> = x_dat.clone();
+            let y: Vec<f64> = y_dat.clone();
+            (x, y)
+        }
+        "kde" => {
+            // Sample from the Kernel PDF
+            let x: Vec<f64> = kde_sample(&x_dat).iter().copied().filter(|v| !v.is_nan()).collect();;
+            let y: Vec<f64> = kde_sample(&y_dat).iter().copied().filter(|v| !v.is_nan()).collect();;
+            (x, y)
+        }
+        _ => {
+            println!("Unknown calc_type: Choose from [kde, data]");
+            (vec![], vec![])
+        }
+    };
     let x_bins: Vec<f64> = calc_bins(min(&x), max(&x), calc_bin_width_fd(&x));
     let y_bins: Vec<f64> = calc_bins(min(&y), max(&y), calc_bin_width_fd(&y));
     // Calculate marginal distributions
@@ -183,6 +204,19 @@ fn joint_pmf(x: Vec<usize>,y: Vec<usize>) -> Vec<Vec<f64>>{
 
 }
 
+fn kde_sample(data: &Vec<f64>) -> Vec<f64>{
+    let observations = data.clone();
+    let bandwidth = Scott;
+    let kernel = Epanechnikov;
+    let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
+    let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
+    let pdf_min = (min(&data) / 0.1).floor() as i32;
+    let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
+
+    // Sample the distribution.
+    let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
+    return histvals
+}
 
 pub fn max(arr: &Vec<f64>) -> f64 {
     let result = arr.iter().copied().fold(f64::NAN, f64::max);
@@ -197,7 +231,7 @@ pub fn min(arr: &Vec<f64>) -> f64 {
 fn calc_bin_width_fd(data: &Vec<f64>) -> f64 {
     // Calculate bin width using the Freedman-Diaconis rule
     // Sort the data
-    let mut sorted = data.clone();
+    let mut sorted: Vec<f64> = data.iter().copied().filter(|v| v.is_finite()).collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     // Helper function to find the percentile
     let percentile = |p: f64| -> f64 {
