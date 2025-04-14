@@ -5,8 +5,8 @@ A rust library for calculating Information Theoretics
 ```
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install muturin numpy
-muturin develop
+pip install maturin numpy
+maturin develop
 ```
 
 ```
