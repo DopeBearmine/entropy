@@ -9,8 +9,6 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
     if data.len() == 1 {
         return 0.0
     }
-    let length = data.len() as f64;
-    let dev = std(&data);
     
     // Function Logic
     match data_type {
@@ -28,20 +26,7 @@ pub fn _entropy(data: Vec<f64>, data_type: Option<&str>, bin_size: Option<f64>) 
         }
         "kde" => {
             // Kernel Density Estimation (kde)
-            // let observations = data.clone();
-            // let bandwidth = Scott;
-            // let kernel = Epanechnikov;
-            // let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
-            // let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
-            // let pdf_min = (min(&data) / 0.1).floor() as i32;
-            // let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
-
-            // // Sample the distribution.
-            // let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
-
-            let histvals = kde_sample(&data);
-
-            // let bin_size = (pdf_max as f64 - pdf_min as f64) / 100.0;
+            let histvals = kde_sample(&data, "pdf");
             let bin_size = calc_bin_width_fd(&histvals);
             let bins = calc_bins(min(&histvals), max(&histvals), bin_size);
             let mut counts: Vec<u64> = bin_counts(&histvals, &bins);
@@ -73,8 +58,10 @@ pub fn _mutual_information(x_dat: Vec<f64>, y_dat: Vec<f64>, calc_type: Option<&
         }
         "kde" => {
             // Sample from the Kernel PDF
-            let x: Vec<f64> = kde_sample(&x_dat).iter().copied().filter(|v| !v.is_nan()).collect();;
-            let y: Vec<f64> = kde_sample(&y_dat).iter().copied().filter(|v| !v.is_nan()).collect();;
+            // let x: Vec<f64> = kde_sample(&x_dat, "pdf").iter().copied().filter(|v| !v.is_nan()).collect();
+            // let y: Vec<f64> = kde_sample(&y_dat, "pdf").iter().copied().filter(|v| !v.is_nan()).collect();
+            let x: Vec<f64> = kde_sample(&x_dat, "pdf");
+            let y: Vec<f64> = kde_sample(&y_dat, "pdf");
             (x, y)
         }
         _ => {
@@ -82,66 +69,40 @@ pub fn _mutual_information(x_dat: Vec<f64>, y_dat: Vec<f64>, calc_type: Option<&
             (vec![], vec![])
         }
     };
+
     let x_bins: Vec<f64> = calc_bins(min(&x), max(&x), calc_bin_width_fd(&x));
     let y_bins: Vec<f64> = calc_bins(min(&y), max(&y), calc_bin_width_fd(&y));
     // Calculate marginal distributions
     //  - probability of observing the data in x and y independent of each other
     let x_counts: Vec<u64> = bin_counts(&x, &x_bins);
     let x_sum = x_counts.iter().sum::<u64>();
-    let marginal_x: Vec<f64> = x_counts.iter().map(|x| *x as f64 / x_sum as f64).collect();
+    let marginal_x: Vec<f64> = x_counts.iter().map(|count| *count as f64 / x_sum as f64).collect();
 
     let y_counts: Vec<u64> = bin_counts(&y, &y_bins);
     let y_sum = y_counts.iter().sum::<u64>();
-    let marginal_y: Vec<f64> = y_counts.iter().map(|x| *x as f64 / y_sum as f64).collect();
-    
+    let marginal_y: Vec<f64> = y_counts.iter().map(|count| *count as f64 / y_sum as f64).collect();
     // Calculate the joint distribution
     //  - probability of observing data in y given x
     //  - the same as observing data in x given y
     let in_bin_x: Vec<usize> = which_bin(&x, &x_bins);
     let in_bin_y: Vec<usize> = which_bin(&y, &y_bins);
     let joint = joint_pmf(in_bin_x, in_bin_y);
-
     // Calculate Mutual Information
     let mut mutual_info: f64 = 0.0;
-    for (yi, vec) in joint.iter().enumerate() {
-        let denom: Vec<f64> = marginal_x.iter().map(|x| marginal_y[yi] as f64 * x).collect();
-        mutual_info += vec
-            .iter()
-            .zip(&denom)
-            .filter_map(|(&x, &y)| {
-                if x > 0.0 && y > 0.0 {
-                    Some(x * f64::log2(x / y))
-                } else {
-                    None
-                }
-            })
-            .sum::<f64>();
+    for (xi, row) in joint.iter().enumerate() {
+        for (yi, &p_xy) in row.iter().enumerate() {
+            let p_x = marginal_x[xi];
+            let p_y = marginal_y[yi];
+            // println!("p_x: {} | p_y: {} | p_xy: {} | in_log: {} | log: {}",p_x, p_y, p_xy, p_xy/(p_x*p_y), f64::log2(p_xy/(p_x*p_y)));
+    
+            if p_xy > 0.0 && p_x > 0.0 && p_y > 0.0 {
+                mutual_info += p_xy * f64::log2(p_xy / (p_x * p_y));
+            }
+        }
     }
     return mutual_info
 }
 
-
-
-// Helper Functions
-fn std(data: &Vec<f64>) -> Option<f64> {
-    match (mean(data), data.len()) {
-        (data_mean, count) if count > 0 => {
-            let variance = data.iter().map(|value| {
-                let diff = data_mean - (*value as f64);
-
-                diff * diff
-            }).sum::<f64>() / count as f64;
-
-            Some(variance.sqrt())
-        },
-        _ => None
-    }
-}
-
-fn mean(data: &Vec<f64>) -> f64 {
-    let sum: f64 = data.iter().sum();
-    sum as f64 / data.len() as f64
-}
 
 pub fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
     let array_len = ((max - min) / bin_size).ceil() as usize;  // Use usize for array length
@@ -153,9 +114,7 @@ pub fn calc_bins(min: f64, max: f64, bin_size: f64) -> Vec<f64> {
         } else {
             bins.push(bin_size * index as f64 + min);  // Push the calculated bin value
         }
-        
     }
-
     bins  // Return the Vec
 }
 
@@ -192,11 +151,10 @@ fn joint_pmf(x: Vec<usize>,y: Vec<usize>) -> Vec<Vec<f64>>{
         *joint_counts.entry((xi, yi)).or_insert(0) += 1;
 
     }
-    let y_max = max(&y.iter().map(|&x| x as f64).collect()) as usize;
+    let y_max = max(&y.iter().map(|&y| y as f64).collect()) as usize;
     let x_max = max(&x.iter().map(|&x| x as f64).collect()) as usize;
     let mut joint_pmf = vec![vec![0.0; y_max + 1]; x_max + 1];
-    let total = x.len() as f64;
-
+    let total: f64 = joint_counts.values().map(|&count| count as f64).sum();
     for ((xi, yi), count) in joint_counts {
         joint_pmf[xi][yi] = count as f64 / total;
     }
@@ -204,18 +162,20 @@ fn joint_pmf(x: Vec<usize>,y: Vec<usize>) -> Vec<Vec<f64>>{
 
 }
 
-fn kde_sample(data: &Vec<f64>) -> Vec<f64>{
+fn kde_sample(data: &Vec<f64>, return_type: &str) -> Vec<f64>{
     let observations = data.clone();
     let bandwidth = Scott;
     let kernel = Epanechnikov;
     let kde = KernelDensityEstimator::new(observations, bandwidth, kernel);
     let pdf_max = (max(&data) / 0.1 + 1.0).ceil() as i32;
     let pdf_min = (min(&data) / 0.1).floor() as i32;
-    let pdf_dataset: Vec<f64> = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
-
-    // Sample the distribution.
-    let histvals = kde.sample(pdf_dataset.as_slice(), 10_000);
-    return histvals
+    let pdf_dataset: Vec<f64>  = (pdf_min..pdf_max).into_iter().map(|x| x as f64 * 0.1).collect();
+    let values = match return_type {
+        "pdf" => kde.pdf(pdf_dataset.as_slice()),
+        "samples" => kde.sample(pdf_dataset.as_slice(), 10_000),
+        _ => panic!("kde_sample Error. Uknown return_type. Choose from: pdf, samples")
+    };
+    return values
 }
 
 pub fn max(arr: &Vec<f64>) -> f64 {

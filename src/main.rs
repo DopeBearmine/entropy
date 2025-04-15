@@ -6,10 +6,10 @@ use rand_distr::{Distribution, Normal};
 
 
 fn main() {
-    let ctype = Some("data");
+    let ctype = Some("kde");
     let x = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
-    let y = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
-    // let y = [1.8, 1.4, 2.5, 3.0, 1.2, 2.0, 2.5, 0.1, 1.9, 2.3].to_vec();
+    // let y = [9.8, 7.4, 1.5, 3.0, 9.2, 6.0, 7.5, 10.1, 9.0, 10.5].to_vec();
+    let y = [1.8, 1.4, 2.5, 3.0, 1.2, 2.0, 2.5, 0.1, 1.9, 2.3].to_vec();
     let result = _mutual_information(x.clone(),y.clone(), ctype);
     println!("{}", result);
     let x_ent = _entropy(x.clone(), ctype, None);
